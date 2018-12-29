@@ -111,8 +111,8 @@ optional arguments:
                     000102030405060708090A0B0C0D0E0F)
 ```
 
-The most import settins are the host and port for the source of the data and
-the FloatHub ID and key to identify the account. So, for example, if your
+The most import settings are the host and port for the source of the data and
+the FloatHub ID and Security Key to identify the account. So, for example, if your
 kplex process is running on port 333333 on `localhost`, your FloatHub ID is
 `foobar99` and your Security Key is `42424242424242424242424242424242`, you
 would run sfh like this:
