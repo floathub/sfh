@@ -15,13 +15,14 @@ A typical installation of this code would require:
   * A TCP source of NMEA data (generally something like [kplex](http://www.stripydog.com/kplex/) or [gpsd](http://catb.org/gpsd/), see below)
 
 This would allow for remote monitoring of location, speed, etc. With other
-NMEA instruments onboard (and multplexed through kplex), it also
+NMEA instruments onboard (and multplexed through kplex), it would also allow
+for remote monitoring of wind, water, barometric pressure, etc.
 
 ### Python Requirements 
 
 The sfh script is written in python and expects python 3. It uses a number
 of standard libraries (socket, select, datetime, etc.) and also requires the
-following extra libraries:
+following external libraries:
 
   * pynmea2 (See [http://github.com/Knio/pynmea2](http://github.com/Knio/pynmea2))
 
@@ -36,9 +37,21 @@ pip install pycrypto
 
 ### Installation
 
-Install the script. 
+You can grab the sfh script by clicking on the green "Clone or download" button
+on the [github page] (https://github.com/floathub/sfh). Once the sfh file is
+copied to a place where you can execute it, you need to make sure it is set
+as exectuable. On Linux/Mac/etc., you should be able to do this by typing:
+
+```
+chmod a+x ./sfh
+```
+
+On Windows it is a little more compliacted, but you should be able to find
+guidance [here](https://docs.python.org/3/faq/windows.html). 
 
 ### Usage
+
+Run the script. 
 
 ### NMEA Sentences Monitored
 
@@ -68,9 +81,9 @@ Install the script.
 
   * HDT - Heading (True)
 
-### FloatHub Functionality which is **NOT** supported
+### FloatHub Functionality which is NOT supported
 
 The main capability that a real FloatHub device provides that is not easily
 replicable purely from NMEA data is voltage monitoring. This includes both
-reporting of battery and charger levels as well as monitoring acitivity on
+reporting of battery and charger levels as well as monitoring acitivity of
 pumps. 
