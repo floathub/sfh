@@ -14,6 +14,8 @@ A typical installation of this code would require:
 
   * A TCP source of NMEA data (generally something like [kplex](http://www.stripydog.com/kplex/) or [gpsd](http://catb.org/gpsd/), see below)
 
+This would allow for remote monitoring of location, speed, etc. With other
+NMEA instruments onboard (and multplexed through kplex), it also
 
 ### Python Requirements 
 
@@ -25,8 +27,18 @@ following extra libraries:
 
   * pycrypto (See [https://www.dlitz.net/software/pycrypto/](https://www.dlitz.net/software/pycrypto/))
 
-This would allow for remote monitoring of location, speed, etc. With other
-NMEA instruments onboard (and multplexed through kplex), it also
+Both should be easily installed with pip, as in:
+
+```
+pip install pynmea2
+pip install pycrypto
+```
+
+### Installation
+
+Install the script. 
+
+### Usage
 
 ### NMEA Sentences Monitored
 
@@ -56,3 +68,9 @@ NMEA instruments onboard (and multplexed through kplex), it also
 
   * HDT - Heading (True)
 
+### FloatHub Functionality which is **NOT** supported
+
+The main capability that a real FloatHub device provides that is not easily
+replicable purely from NMEA data is voltage monitoring. This includes both
+reporting of battery and charger levels as well as monitoring acitivity on
+pumps. 
