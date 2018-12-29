@@ -50,6 +50,9 @@ chmod a+x ./sfh
 On Windows it is a little more compliacted, but you should be able to find
 guidance [here](https://docs.python.org/3/faq/windows.html). 
 
+
+### FloatHub Credentials
+
 You'll also need a **FloatHub ID** and **Security Key**. These are free and
 require no payment or personal information other than an email address.
 These account credentails are required to identify which incoming data
@@ -65,7 +68,24 @@ and **Security Key** by going to the account page:
 
 and clicking on the "Show FloatHub Device Settings" button. 
 
-Finally, you'll need a TCP source of NNMEA data. This is typically from 
+### NMEA Data Source
+
+Finally, you'll need a TCP source of NNMEA data. This is typically from
+something like kplex, which is a handy "broker" of NMEA data often used
+with onboard navigation systems built around Rasberry Pi Computers. 
+
+Much more information on kplex can be found at its [homepage](http://www.stripydog.com/kplex/).
+In particular, configuring it to serve NMEA data as a TCP server can be
+found [here] (http://www.stripydog.com/kplex/configuration.html#tcp).
+
+There are, of course, many other ways to get NMEA data from a TCP source,
+including [gpsd](http://catb.org/gpsd/). A typical GPSD setup will serve out
+position (GPS) data on port 2947.
+
+Whatever your source and setup, you need to know the hostname and port
+where NMEA data is being served over TCP. The hostname will often be
+127.0.0.1 and/or localhost, but will depend on your particular setup and
+configuration.
 
 ### Usage
 
