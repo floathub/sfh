@@ -37,10 +37,11 @@ pip install pycrypto
 
 ### Installation
 
-You can grab the sfh script by clicking on the green "Clone or download" button
-on the [github page] (https://github.com/floathub/sfh). Once the sfh file is
-copied to a place where you can execute it, you need to make sure it is set
-as exectuable. On Linux/Mac/etc., you should be able to do this by typing:
+You can grab the sfh script by clicking on the green "Clone or download"
+button on the [github page](https://github.com/floathub/sfh).  Once the sfh
+file is copied to a place where you can execute it (probably on a Pi or
+other small, onboard computer), you need to make sure it is set as
+exectuable.  On Linux/Mac/etc., you should be able to do this by typing:
 
 ```
 chmod a+x ./sfh
@@ -49,9 +50,26 @@ chmod a+x ./sfh
 On Windows it is a little more compliacted, but you should be able to find
 guidance [here](https://docs.python.org/3/faq/windows.html). 
 
+You'll also need a **FloatHub ID** and **Security Key**. These are free and
+require no payment or personal information other than an email address.
+These account credentails are required to identify which incoming data
+belongs to which vessel, and also to help encrypt the data before it is
+sent. If you don't already have a FloatHub account, you can get one here:
+
+  [https://floathub.com/signup]
+
+Once you have an account, you can copy your **FloatHub ID** 
+and **Security Key** by going to the account page:
+
+  [https://floathub.com/account]
+
+and clicking on the "Show FloatHub Device Settings" button. 
+
+Finally, you'll need a TCP source of NNMEA data. This is typically from 
+
 ### Usage
 
-Run the script. 
+
 
 ### NMEA Sentences Monitored
 
