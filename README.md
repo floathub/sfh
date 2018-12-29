@@ -47,7 +47,7 @@ exectuable.  On Linux/Mac/etc., you should be able to do this by typing:
 chmod a+x ./sfh
 ```
 
-On Windows it is a little more compliacted, but you should be able to find
+On Windows it is a little more complicated, but you should be able to find
 guidance [here](https://docs.python.org/3/faq/windows.html). 
 
 
@@ -76,7 +76,7 @@ with onboard navigation systems built around Rasberry Pi Computers.
 
 Much more information on kplex can be found at its [homepage](http://www.stripydog.com/kplex/).
 In particular, configuring it to serve NMEA data as a TCP server can be
-found [here] (http://www.stripydog.com/kplex/configuration.html#tcp).
+found [here](http://www.stripydog.com/kplex/configuration.html#tcp).
 
 There are, of course, many other ways to get NMEA data from a TCP source,
 including [gpsd](http://catb.org/gpsd/). A typical GPSD setup will serve out
@@ -89,6 +89,44 @@ configuration.
 
 ### Usage
 
+You can run the sfh with the `--help` flag to see all it's available
+options:
+
+```
+./sfh --help
+usage: sfh [-h] [-v] [-s S] [-p P] [-f F] [-t P] [-i I] [-k K]
+
+Consume NMEA over TCP and send it to a FloatHub server in the right format
+(see https://floathub.com)
+
+optional arguments:
+  -h, --help        show this help message and exit
+  -v, --verbose     increase output verbosity with debugging info
+  -s S, --source S  hostname of nmea source (default 127.0.0.1)
+  -p P, --port P    port of nmea source (default 10110)
+  -f F, --fhub F    hostname of FloatHub server (default fdr.floathub.net)
+  -t P, --fhport P  port of FloatHub Server (default 50003)
+  -i I, --id I      FloatHub Acount ID (default factoryX)
+  -k K, --key K     FloatHub Security Key (default
+                    000102030405060708090A0B0C0D0E0F)
+```
+
+The most import settins are the host and port for the source of the data and
+the FloatHub ID and key to identify the account. So, for example, if your
+kplex process is running on port 333333 on `localhost`, your FloatHub ID is
+`foobar99` and your Security Key is `42424242424242424242424242424242`, you
+would run sfh like this:
+
+```
+./sfh -p 33333 -s localhost -i foobar99 -k 42424242424242424242424242424242
+```
+
+The sfh script will just keep monitoring NMEA data from `localhost:33333`
+and sending it off to the FloatHub system.  It is designed to be a veru long
+running process, and If it gets disconnected it will keep periodicaly
+reconnect (to both the NMEA source and the FloatHub system).  If you want to
+see more verbose information about what's going on, you can the '-v' flag to
+get more output.
 
 
 ### NMEA Sentences Monitored
@@ -123,5 +161,5 @@ configuration.
 
 The main capability that a real FloatHub device provides that is not easily
 replicable purely from NMEA data is voltage monitoring. This includes both
-reporting of battery and charger levels as well as monitoring acitivity of
+reporting of battery and charger levels as well as monitoring activity of
 pumps. 
