@@ -8,21 +8,31 @@ in software.
 
 A typical installation of this code would require:
 
-  * The script in this repository (sfh)
+  * The phython script in this repository (sfh)
 
   * A small onboard computer (typically a Rasberry Pi)
 
-  * A source of NMEA data (generally something like [kplex](http://www.stripydog.com/kplex/) or [gpsd](http://catb.org/gpsd/), see below)
+  * A TCP source of NMEA data (generally something like [kplex](http://www.stripydog.com/kplex/) or [gpsd](http://catb.org/gpsd/), see below)
 
+
+### Python Requirements 
+
+The sfh script is written in python and expects python 3. It uses a number
+of standard libraries (socket, select, datetime, etc.) and also requires the
+following extra libraries:
+
+  * pynmea2 (See [http://github.com/Knio/pynmea2](http://github.com/Knio/pynmea2))
+
+  * pycrypto (See [https://www.dlitz.net/software/pycrypto/](https://www.dlitz.net/software/pycrypto/))
 
 This would allow for remote monitoring of location, speed, etc. With other
 NMEA instruments onboard (and multplexed through kplex), it also
 
 ### NMEA Sentences Monitored
 
-  * GGA - GPS fix and precision of fix 
+  * GGA - GPS Latitude, Longitude, and Precision
 
-  * RMC - GPS Date/Time data, speed over ground, course over ground
+  * RMC - GPS Date/Time, Speed Over Ground, Course Over Ground
 
   * XDR - Air Temperature, Water Temperature, and Barometric Pressue
 
@@ -34,7 +44,7 @@ NMEA instruments onboard (and multplexed through kplex), it also
 
   * MTW - Water Temperature
 
-  * VHW - Speed through Water
+  * VHW - Speed Through Water
 
   * MWV - Wind Speed and Angle (Relative)
 
