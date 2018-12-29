@@ -6,19 +6,19 @@ Although there is a commercial device available to support this
 functionality, much of the monitoring capability can be achieved purely
 in software. 
 
-A typical installation would require:
+A typical installation of this code would require:
 
   * The script in this repository (sfh)
 
   * A small onboard computer (typically a Rasberry Pi)
 
-  * A source of NMEA data (generally something like kplex or gpsd, see below)
+  * A source of NMEA data (generally something like [kplex](http://www.stripydog.com/kplex/) or [gpsd](http://catb.org/gpsd/), see below)
 
 
 This would allow for remote monitoring of location, speed, etc. With other
 NMEA instruments onboard (and multplexed through kplex), it also
 
-## NMEA Sentences Monitored
+### NMEA Sentences Monitored
 
   * GGA - GPS fix and precision of fix 
 
