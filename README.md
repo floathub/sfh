@@ -56,12 +56,12 @@ These account credentails are required to identify which incoming data
 belongs to which vessel, and also to help encrypt the data before it is
 sent. If you don't already have a FloatHub account, you can get one here:
 
-    https://floathub.com/signup
+  https://floathub.com/signup
 
 Once you have an account, you can copy your **FloatHub ID** 
 and **Security Key** by going to the account page:
 
-    https://floathub.com/account
+  https://floathub.com/account
 
 and clicking on the "Show FloatHub Device Settings" button. 
 
