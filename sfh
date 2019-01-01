@@ -1,0 +1,473 @@
+#!/usr/bin/env python3
+#
+#  Relatively simple process that consumes NMEA data from a socket/TCP
+#  connection, marks it up in the FloatHub format, and sends it to a
+#  FloatHub server.
+#
+#  Typical use case would be as a "Soft FloatHub Device" (thus the name,
+#  sfh) I.e., try to do most of what a FloatHub device does, but only in
+#  software.
+#
+#
+
+import socket
+import sys
+import select
+import time
+import datetime
+import argparse
+import base64
+import os
+#import random
+
+try:
+
+  import pynmea2
+  
+
+except:
+
+  print()
+  print("You are missing the pynmea2 library (NMEA processing for python).")
+  print("You should be able to install it with:")
+  print()
+  print("    pip install pynmea2")
+  print()
+  print("See http://github.com/Knio/pynmea2 for more information.")
+  print()
+  sys.exit()
+
+
+
+try:
+
+  from Crypto.Cipher import AES
+
+except:
+
+  print()
+  print("You are missing the pycrypto library (hashing and encryption for python).")
+  print("You should be able to install it with:")
+  print()
+  print("    pip install pycrypto")
+  print()
+  print("See https://www.dlitz.net/software/pycrypto/ for more information.")
+  print()
+  sys.exit()
+
+
+#
+# Steup argument paserser
+#
+
+parser = argparse.ArgumentParser(description="Consume NMEA over TCP and send it to a FloatHub server in the right format (see https://floathub.com)")
+parser.add_argument("-v", "--verbose", help="increase output verbosity with debugging info",
+                    action="store_true")
+parser.add_argument("-s", "--source", help="hostname of nmea source (default 127.0.0.1)",
+                    action="store", dest="source", default="127.0.0.1", metavar='S')
+parser.add_argument("-p", "--port", help="port of nmea source (default 10110)", metavar='P',
+                    action="store", dest="port", type=int, default=10110)
+parser.add_argument("-f", "--fhub", help="hostname of FloatHub server (default fdr.floathub.net)",
+                    action="store", dest="fhubs", default="fdr.floathub.net", metavar='F')
+parser.add_argument("-t", "--fhport", help="port of FloatHub Server (default 50003)", metavar='P',
+                    action="store", dest="fhubp", type=int, default=50003)
+parser.add_argument("-i", "--id", help="FloatHub Acount ID (default factoryX)", metavar='I',
+                    action="store", dest="fhubid", default="factoryX")
+parser.add_argument("-k", "--key", help="FloatHub Security Key (default 000102030405060708090A0B0C0D0E0F)", metavar='K',
+                    action="store", dest="fhubkey", default="000102030405060708090A0B0C0D0E0F")
+
+options = parser.parse_args()
+  
+  
+#
+#  Sanity checking on some options
+#
+
+if len(options.fhubid) != 8:
+  print("ERROR: FloatHub ID is not exactly 8 characters long (cannot continue)")
+  sys.exit()
+allowed_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghojklmnopqrstuvwxyz0123456789')
+if not set(options.fhubid).issubset(allowed_chars):
+  print("ERROR: FloatHub ID has illegal characters (cannot continue)")
+  sys.exit()
+  
+if len(options.fhubkey) != 32:
+  print("ERROR: FloatHub Key is not exactly 16 bytes (hex) long (cannot continue)")
+  sys.exit()
+allowed_chars = set('ABCDEFabcdef0123456789')
+if not set(options.fhubkey).issubset(allowed_chars):
+  print("ERROR: FloatHub Key has illegal characters (cannot continue)")
+  sys.exit()
+  
+  
+# TCP socket to the NMEA data source
+socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_address = (options.source, options.port)
+socket_to_nmea_connected = False
+socket_to_nmea.settimeout(20)
+#socket_to_nmea.setblocking(False)
+
+
+
+# Sentence types this code can do something with
+fh_sentence_types = [
+"GGA", "RMC", "XDR", "MDA",
+"DBT", "DPT", "MTW", "VHW",
+"MWV", "MWD", "HDG", "HDM", "HDT"]
+
+# Flags to know if we are in motion, GPS is valid
+currently_active = False
+gps_valid = False
+
+#
+# A class for FloathHub protocol objects
+#
+
+class FloatHubData:
+
+  def __init__(self, label, type):
+    self.label = label
+    self.type = type
+    self.created = datetime.datetime.utcnow()
+    self.last_updated = datetime.datetime.utcfromtimestamp(0)
+    self.value = ""
+
+  def set(self, value):
+    self.value = value
+    self.last_updated = datetime.datetime.utcnow()
+
+  def output(self):
+    if (datetime.datetime.utcnow() - self.last_updated).total_seconds() < 60:
+      return(",{}:{}".format(self.label, self.value))
+    return ""
+
+#
+# Make some FlaotHub data holders
+#
+fh_u = FloatHubData("U", "Timestamp")
+fh_t = FloatHubData("T", "Temperature (Air)")
+fh_p = FloatHubData("P", "Pressure")
+fh_l = FloatHubData("L", "Latitutde")
+fh_o = FloatHubData("O", "Longitude")
+fh_a = FloatHubData("A", "Altitude")
+fh_h = FloatHubData("H", "HDOP")
+fh_s = FloatHubData("S", "SOG")
+fh_b = FloatHubData("B", "Course over Ground")
+fh_n = FloatHubData("N", "Satellites in View")
+fh_r = FloatHubData("R", "Speed through Water")
+fh_d = FloatHubData("D", "Depth")
+fh_j = FloatHubData("J", "Wind Speed")
+fh_k = FloatHubData("K", "Wind Direction")
+fh_w = FloatHubData("W", "Wind Speed Absolute")
+fh_x = FloatHubData("X", "Wind Direction Absolute")
+fh_y = FloatHubData("Y", "Temperature (Water)")
+fh_g = FloatHubData("G", "Heading (True)")
+fh_m = FloatHubData("M", "Heading (Magnetic)")
+
+
+# buffer for incoming NMEA data
+nmea_in_buffer = ""
+
+
+# Settable debugging
+def debugging_output(message):
+  global options
+  if options.verbose:
+    print(message)
+
+
+# Handle NMEA incoming
+def handle_nmea_in(nmea):
+  global currently_active
+  global gps_valid
+
+  try:
+    parsed_nmea = pynmea2.parse(nmea)
+  except:
+    return
+  if parsed_nmea.sentence_type not in fh_sentence_types:
+    debugging_output(" XX: Ignoring sentence of type {}".format(parsed_nmea.sentence_type))
+    return
+    
+  #
+  # Fiddly data updating 
+  #  
+
+  if parsed_nmea.sentence_type == "RMC":
+    if parsed_nmea.status and parsed_nmea.status == "A":
+      if gps_valid is False:
+        debugging_output(" GP: Validity of fix changed to True")
+      gps_valid = True
+    else:
+      if gps_valid is True:
+        debugging_output(" GP: Validity of fix changed to False")
+      gps_valid = False
+    if parsed_nmea.timestamp and parsed_nmea.datestamp:
+      fh_u.set("{}{}{}{}{}{}".format(str(parsed_nmea.timestamp)[0:2],
+                                    str(parsed_nmea.timestamp)[3:5],
+                                    str(parsed_nmea.timestamp)[6:8],
+                                    str(parsed_nmea.datestamp)[8:10], 
+                                    str(parsed_nmea.datestamp)[5:7], 
+                                    str(parsed_nmea.datestamp)[0:4]))
+    currently_active = False
+    if parsed_nmea.spd_over_grnd:
+      fh_s.set(str(parsed_nmea.spd_over_grnd))
+      if parsed_nmea.spd_over_grnd > 1.0:
+        currently_active = True
+    if parsed_nmea.true_course:
+      fh_b.set(str(parsed_nmea.true_course))
+
+  elif parsed_nmea.sentence_type == "GGA":
+    if parsed_nmea.latitude and parsed_nmea.latitude_minutes and parsed_nmea.lat_dir:
+      latitude = "%02d %08.5f" % (abs(parsed_nmea.latitude), parsed_nmea.latitude_minutes)
+      latitude += parsed_nmea.lat_dir
+      fh_l.set(latitude)
+    if parsed_nmea.longitude and parsed_nmea.longitude_minutes and parsed_nmea.lon_dir:
+      longitude = "%03d %08.5f" % (abs(parsed_nmea.longitude), parsed_nmea.longitude_minutes)
+      longitude += parsed_nmea.lon_dir
+      fh_o.set(longitude)
+    if parsed_nmea.num_sats:
+      fh_n.set(parsed_nmea.num_sats)
+    if parsed_nmea.horizontal_dil:
+      fh_h.set(parsed_nmea.horizontal_dil)
+    if parsed_nmea.altitude:
+      fh_a.set(parsed_nmea.altitude)        
+
+  elif parsed_nmea.sentence_type == "XDR":
+    for i in range(0, parsed_nmea.num_transducers):
+      transducer = parsed_nmea.get_transducer(i)
+      if transducer.type == "C" and (transducer.id == "TempAir" or transducer.id == "ENV_OUTAIR_T"):
+        air_temperature = float(transducer.value)
+        if transducer.units == "C":
+          air_temperature = (air_temperature * 1.8) + 32.0
+        fh_t.set("%6.3f" % air_temperature)
+      if transducer.type == "C" and transducer.id == "ENV_WATER_T":
+        water_temperature = float(transducer.value)
+        if transducer.units == "C":
+          water_temperature = (water_temperature * 1.8) + 32.0
+        fh_y.set("%6.3f" % water_temperature)
+      if transducer.type == "P":
+        pressure = float(transducer.value)
+        if transducer.units == "B":
+          pressure = pressure * 29.5301
+        fh_p.set("%7.4f" % pressure)
+
+  elif parsed_nmea.sentence_type == "MDA":
+    if parsed_nmea.b_pressure_inch:
+      fh_p.set(parsed_nmea.b_pressure_inch)
+    if parsed_nmea.air_temp:
+      fh_t.set("%6.3f" % float((float(parsed_nmea.air_temp) * 1.8) + 32.0))
+    if parsed_nmea.water_temp:
+      fh_y.set("%6.3f" % float((float(parsed_nmea.water_temp) * 1.8) + 32.0))
+    if parsed_nmea.wind_speed_knots:
+      fh_w.set(parsed_nmea.wind_speed_knots)
+    if parsed_nmea.direction_true:
+      fh_x.set(parsed_nmea.direction_true)
+
+
+  elif parsed_nmea.sentence_type == "MWV":
+    if parsed_nmea.wind_angle:
+      fh_k.set(parsed_nmea.wind_angle)
+    if parsed_nmea.wind_speed:
+      wind_speed = float(parsed_nmea.wind_speed)
+      # convert anything not in knots to knots
+      if  parsed_nmea.wind_speed_units == "K":
+        wind_speed = wind_speed * 0.539957
+      elif parsed_nmea.wind_speed_units == "M":
+        wind_speed = wind_speed * 1.94384
+      elif parsed_nmea.wind_speed_units == "S":
+        wind_speed = wind_speed * 0.868976
+      fh_j.set(wind_speed)
+
+  elif parsed_nmea.sentence_type == "MWD":
+    if parsed_nmea.direction_true:
+      fh_x.set(parsed_nmea.direction_true)
+    if parsed_nmea.wind_speed_knots:
+      fh_w.set(parsed_nmea.wind_speed_knots)
+
+  elif parsed_nmea.sentence_type == "DBT":
+    if parsed_nmea.depth_meters:
+      fh_d.set(parsed_nmea.depth_meters)
+
+  elif parsed_nmea.sentence_type == "DPT":
+    if parsed_nmea.depth:
+      depth = float(parsed_nmea.depth)
+      if parsed_nmea.offset:
+        depth += float(parsed_nmea.offset)
+      fh_d.set(depth)
+      
+  elif parsed_nmea.sentence_type == "MTW":
+    if parsed_nmea.temperature:
+      temperature = float(parsed_nmea.temperature)
+      if parsed_nmea.units and parsed_nmea.units == "C":
+        temperature = (temperature * 1.8) + 32.0
+      fh_y.set("%6.3f" % temperature)
+       
+  elif parsed_nmea.sentence_type == "VHW":
+    if parsed_nmea.water_speed_knots:
+      fh_r.set(parsed_nmea.water_speed_knots)
+      
+  elif parsed_nmea.sentence_type == "HDG":
+    if parsed_nmea.heading:
+      heading_m = float(parsed_nmea.heading)
+      fh_m.set(heading_m)
+      if parsed_nmea.deviation and parsed_nmea.variation:
+        deviation = float(parsed_nmea.deviation)
+        variation = float(parsed_nmea.variation)
+        if parsed_nmea.dev_dir and parsed_nmea.dev_dir == "W":
+          deviation = deviation * -1.0
+        if parsed_nmea.var_dir and parsed_nmea.var_dir == "W":
+          variation = variation * -1.0
+        fh_g.set(heading_m + deviation + variation)
+          
+  elif parsed_nmea.sentence_type == "HDM":
+    if parsed_nmea.heading:
+      fh_m.set(parsed_nmea.heading)
+             
+  elif parsed_nmea.sentence_type == "HDT":
+    if parsed_nmea.heading:
+      fh_g.set(parsed_nmea.heading)
+
+
+def send_fh():             
+  payload = ""
+  payload += fh_u.output()
+  payload += fh_t.output()
+  payload += fh_p.output()
+  payload += fh_l.output()
+  payload += fh_o.output()
+  payload += fh_a.output()
+  payload += fh_h.output()
+  payload += fh_s.output()
+  payload += fh_b.output()
+  payload += fh_n.output()
+  payload += fh_r.output()
+  payload += fh_d.output()
+  payload += fh_j.output()
+  payload += fh_k.output()
+  payload += fh_w.output()
+  payload += fh_x.output()
+  payload += fh_y.output()
+  payload += fh_g.output()
+  payload += fh_m.output()
+
+  if len(payload) > 0:
+    fha_message = "$FHA:{}:2${}".format(options.fhubid,payload)
+    byte_fha_message = bytearray(fha_message, 'ascii')    
+    debugging_output("OUT: {}".format(fha_message))
+    binary_key = bytes.fromhex(options.fhubkey)
+    iv = os.urandom(16)
+    encryptor = AES.new(binary_key, AES.MODE_CBC, iv)
+
+
+    padding_required = 16 - (len(fha_message) % 16)
+    if padding_required == 16:
+      for i in range(16):
+        byte_fha_message.append(16)
+    else:
+      for i in range(padding_required):
+         byte_fha_message.append(padding_required)
+
+    ciphertext = encryptor.encrypt(bytes(byte_fha_message))
+    b64_encoded = base64.b64encode(iv + ciphertext)
+    fhs_message = "$FHS:{}:2$,{}".format(options.fhubid,b64_encoded.decode('ascii'))
+    debugging_output("OUT: {}".format(fhs_message))
+
+    byte_fhs_message = bytearray(fhs_message, 'ascii')    
+    byte_fhs_message.append(13) #return
+    byte_fhs_message.append(10) #newline
+    socket_to_fhub = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    fdr_address = (options.fhubs, options.fhubp)
+    socket_to_fhub.settimeout(10)
+    try:
+      socket_to_fhub.connect(fdr_address)
+    except:
+      print("ERROR: Can't find any host to connect to at {}:{}".format(options.fhubs, options.fhubp))
+      return
+    try:
+      how_many_went = socket_to_fhub.sendall(bytes(byte_fhs_message))
+    except:
+      print("ERROR: Failed to send message to {}:{}".format(options.fhubs, options.fhubp))
+      return
+    socket_to_fhub.close()
+      
+    
+    
+    
+
+#
+#  Main loop
+#
+
+last_message_sent_timestamp = datetime.datetime.utcnow()
+last_nmea_in_timestamp = datetime.datetime.utcnow()
+
+try:
+  while True:
+
+    if ( currently_active and  (datetime.datetime.utcnow() - last_message_sent_timestamp).total_seconds() > 30 ) or (datetime.datetime.utcnow() - last_message_sent_timestamp).total_seconds() > 60 * 10:    
+      last_message_sent_timestamp = datetime.datetime.utcnow()
+      send_fh()
+        
+    if socket_to_nmea_connected is True:
+      select.select([socket_to_nmea],[],[],5)
+      try:
+        incoming = socket_to_nmea.recv(1)
+        if len(incoming) == 0:
+          debugging_output("---------DISCONNECTED HERE-----------")
+          socket_to_nmea_connected = False
+          socket_to_nmea.shutdown(socket.SHUT_RDWR)
+          socket_to_nmea.close()
+        else:
+          if incoming == b'\r':
+            pass
+          elif incoming == b'\n':
+            debugging_output(" In: {}".format(nmea_in_buffer))
+            handle_nmea_in(nmea_in_buffer)
+            nmea_in_buffer = ""
+            last_nmea_in_timestamp = datetime.datetime.utcnow()
+          else:
+            nmea_in_buffer += incoming.decode('ascii')
+            if len(nmea_in_buffer) > 1024 * 8:
+              nmea_in_buffer = ""
+      except:
+        debugging_output("---------DISCONNECTED THERE-----------")
+        socket_to_nmea_connected = False
+        socket_to_nmea.shutdown(socket.SHUT_RDWR)
+        socket_to_nmea.close()
+      #
+      #  Throwout and try to re-establish a connection if it is really slow
+      #
+
+      if socket_to_nmea_connected and (datetime.datetime.utcnow() - last_nmea_in_timestamp).total_seconds() > 20:
+        socket_to_nmea.shutdown(socket.SHUT_RDWR)
+        time.sleep(1)
+        socket_to_nmea.close()
+        time.sleep(1)
+        socket_to_nmea_connected = False
+        del socket_to_nmea 
+        socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        debugging_output("--------RECYCLING---------")
+
+
+    else:
+      try:
+        debugging_output('------- CONNECTING {}:{} -----------'.format(*server_address))
+        socket_to_nmea.__init__() 
+        #socket_to_nmea.setblocking(False)
+        socket_to_nmea.settimeout(20)
+        socket_to_nmea.connect(server_address)
+        socket_to_nmea_connected = True
+        last_nmea_in_timestamp = datetime.datetime.utcnow()
+        debugging_output("-----------CONNECTED------------")
+      except:
+        debugging_output("-----FAILED TO CONNECT, WILL SLEEP A BIT------")
+        time.sleep(10)
+
+finally:
+    debugging_output("---------- SHUTTING DOWN ----------")
+    socket_to_nmea.shutdown(socket.SHUT_RDWR)
+    socket_to_nmea.close()
+    
+
+

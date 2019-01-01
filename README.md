@@ -82,10 +82,9 @@ There are, of course, many other ways to get NMEA data from a TCP source,
 including [gpsd](http://catb.org/gpsd/). A typical GPSD setup will serve out
 position (GPS) data on port 2947.
 
-Whatever your source and setup, you need to know the hostname and port
-where NMEA data is being served over TCP. The hostname will often be
-127.0.0.1 and/or localhost, but will depend on your particular setup and
-configuration.
+Whatever your source and setup, you need to know the hostname and port where
+NMEA data is being served over TCP.  The hostname will often be 127.0.0.1
+and/or localhost, but will depend on your particular configuration.
 
 ### Usage
 
@@ -122,11 +121,11 @@ would run sfh like this:
 ```
 
 The sfh script will just keep monitoring NMEA data from `localhost:33333`
-and sending it off to the FloatHub system.  It is designed to be a veru long
-running process, and If it gets disconnected it will keep periodicaly
-reconnect (to both the NMEA source and the FloatHub system).  If you want to
-see more verbose information about what's going on, you can the '-v' flag to
-get more output.
+and sending it off to the FloatHub system.  It is designed to be a very long
+running process. If it gets disconnected, it will keep attempting to
+periodically reconnect (to both the NMEA source and the FloatHub system). 
+If you want to see more verbose information about what's going on, you can
+the '-v' flag to get more output.
 
 
 ### NMEA Sentences Monitored
