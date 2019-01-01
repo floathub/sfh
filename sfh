@@ -175,6 +175,16 @@ def debugging_output(message):
   if options.verbose:
     print(message)
 
+# Fancy settable debugging
+def fancy_debugging_output(message):
+  left_span = int((100 - len(message)) / 2)
+  global options
+  if options.verbose:
+    for i in range(0, left_span): print("-", end="")
+    print(message, end="")
+    for i in range(0,100 - (len(message) + left_span)): print ("-",end="")
+    print ("")
+
 
 # Handle NMEA incoming
 def handle_nmea_in(nmea):
@@ -414,10 +424,14 @@ try:
       try:
         incoming = socket_to_nmea.recv(1)
         if len(incoming) == 0:
-          debugging_output("---------DISCONNECTED HERE-----------")
-          socket_to_nmea_connected = False
           socket_to_nmea.shutdown(socket.SHUT_RDWR)
+          time.sleep(1)
           socket_to_nmea.close()
+          time.sleep(1)
+          socket_to_nmea_connected = False
+          del socket_to_nmea 
+          socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          socket_to_nmea.settimeout(20)
         else:
           if incoming == b'\r':
             pass
@@ -431,10 +445,15 @@ try:
             if len(nmea_in_buffer) > 1024 * 8:
               nmea_in_buffer = ""
       except:
-        debugging_output("---------DISCONNECTED THERE-----------")
-        socket_to_nmea_connected = False
+        fancy_debugging_output("DISCONNECTED THERE")
         socket_to_nmea.shutdown(socket.SHUT_RDWR)
+        time.sleep(1)
         socket_to_nmea.close()
+        time.sleep(1)
+        socket_to_nmea_connected = False
+        del socket_to_nmea 
+        socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket_to_nmea.settimeout(20)
       #
       #  Throwout and try to re-establish a connection if it is really slow
       #
@@ -447,25 +466,25 @@ try:
         socket_to_nmea_connected = False
         del socket_to_nmea 
         socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        debugging_output("--------RECYCLING---------")
+        socket_to_nmea.settimeout(20)
+        fancy_debugging_output("RECYCLING")
 
 
     else:
       try:
-        debugging_output('------- CONNECTING {}:{} -----------'.format(*server_address))
+        fancy_debugging_output("CONNECTING {}:{} ".format(*server_address))
         socket_to_nmea.__init__() 
         #socket_to_nmea.setblocking(False)
-        socket_to_nmea.settimeout(20)
         socket_to_nmea.connect(server_address)
         socket_to_nmea_connected = True
         last_nmea_in_timestamp = datetime.datetime.utcnow()
-        debugging_output("-----------CONNECTED------------")
+        fancy_debugging_output("CONNECTED")
       except:
-        debugging_output("-----FAILED TO CONNECT, WILL SLEEP A BIT------")
+        fancy_debugging_output("FAILED TO CONNECT, WILL SLEEP A BIT")
         time.sleep(10)
 
 finally:
-    debugging_output("---------- SHUTTING DOWN ----------")
+    fancy_debugging_output("SHUTTING DOWN")
     socket_to_nmea.shutdown(socket.SHUT_RDWR)
     socket_to_nmea.close()
     
