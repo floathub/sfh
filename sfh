@@ -62,6 +62,8 @@ except:
 parser = argparse.ArgumentParser(description="Consume NMEA over TCP and send it to a FloatHub server in the right format (see https://floathub.com)")
 parser.add_argument("-v", "--verbose", help="increase output verbosity with debugging info",
                     action="store_true")
+parser.add_argument("-n", "--noais", help="ignore (do not relay) AIS sentences",
+                    action="store_true")
 parser.add_argument("-s", "--source", help="hostname of nmea source (default 127.0.0.1)",
                     action="store", dest="source", default="127.0.0.1", metavar='S')
 parser.add_argument("-p", "--port", help="port of nmea source (default 10110)", metavar='P',
@@ -177,10 +179,61 @@ def fancy_debugging_output(message):
     print ("")
 
 
+#relay AIS as is
+def relay_ais(message):
+  global options
+  if options.noais:
+    debugging_output(" XX: Ignoring AIS Sentence (--noais is on)")
+    return
+  fho_message = "$FHO:{}:2$,{}".format(options.fhubid,message)
+  byte_fho_message = bytearray(fho_message, 'ascii')    
+  debugging_output("AIS: {}".format(fho_message))
+  #binary_key = bytes.fromhex(options.fhubkey)
+  binary_key = binascii.unhexlify(options.fhubkey)
+  iv = os.urandom(16)
+  encryptor = AES.new(binary_key, AES.MODE_CBC, iv)
+
+
+  padding_required = 16 - (len(fho_message) % 16)
+  if padding_required == 16:
+    for i in range(16):
+      byte_fho_message.append(16)
+  else:
+    for i in range(padding_required):
+       byte_fho_message.append(padding_required)
+
+  ciphertext = encryptor.encrypt(bytes(byte_fho_message))
+  b64_encoded = base64.b64encode(iv + ciphertext)
+  fhs_message = "$FHS:{}:2$,{}".format(options.fhubid,b64_encoded.decode('ascii'))
+  debugging_output("OUT: {}".format(fhs_message))
+
+  byte_fhs_message = bytearray(fhs_message, 'ascii')    
+  byte_fhs_message.append(13) #return
+  byte_fhs_message.append(10) #newline
+  socket_to_fhub = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  fdr_address = (options.fhubs, options.fhubp)
+  socket_to_fhub.settimeout(10)
+  try:
+    socket_to_fhub.connect(fdr_address)
+  except:
+    print("ERROR: Can't find any host to connect to at {}:{}".format(options.fhubs, options.fhubp))
+    return
+  try:
+    how_many_went = socket_to_fhub.sendall(bytes(byte_fhs_message))
+  except:
+    print("ERROR: Failed to send message to {}:{}".format(options.fhubs, options.fhubp))
+    return
+  socket_to_fhub.close()
+  
+
 # Handle NMEA incoming
 def handle_nmea_in(nmea):
   global currently_active
   global gps_valid
+
+  if nmea[0] == "!" and (nmea[1] == "A" or nmea[1] == "B" or nmea[1] =="S"):
+    relay_ais(nmea)
+    return
 
   try:
     parsed_nmea = pynmea2.parse(nmea)
@@ -466,7 +519,10 @@ try:
         nmea_in_buffer = ""
         last_nmea_in_timestamp = datetime.datetime.utcnow()
       else:
-        nmea_in_buffer += incoming.decode('ascii')
+        try:
+          nmea_in_buffer += incoming.decode('ascii')
+        except:
+          pass 
         if len(nmea_in_buffer) > 1024 * 8:
           nmea_in_buffer = ""
 
