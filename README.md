@@ -178,4 +178,6 @@ the FloatHub website it is possible to echo this data to AIS aggregation
 sites such as 
 [MarineTraffic.com](https://www.marinetraffic.com/)
 or 
-[AISHub.net](http://www.aishub.net)
+[AISHub.net](http://www.aishub.net).
+If you explicitly do *not* want to relay AIS data, you can use the
+`-n/--noias` flag to turn this functionality off. 
