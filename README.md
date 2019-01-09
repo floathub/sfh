@@ -95,7 +95,7 @@ options:
 
 ```
 ./sfh --help
-usage: sfh [-h] [-v] [-s S] [-p P] [-f F] [-t P] [-i I] [-k K]
+usage: sfh [-h] [-v] [-n] [-s S] [-p P] [-f F] [-t P] [-i I] [-k K]
 
 Consume NMEA over TCP and send it to a FloatHub server in the right format
 (see https://floathub.com)
@@ -103,6 +103,7 @@ Consume NMEA over TCP and send it to a FloatHub server in the right format
 optional arguments:
   -h, --help        show this help message and exit
   -v, --verbose     increase output verbosity with debugging info
+  -n, --noais       ignore (do not relay) AIS sentences
   -s S, --source S  hostname of nmea source (default 127.0.0.1)
   -p P, --port P    port of nmea source (default 10110)
   -f F, --fhub F    hostname of FloatHub server (default fdr.floathub.net)
@@ -110,6 +111,8 @@ optional arguments:
   -i I, --id I      FloatHub Acount ID (default factoryX)
   -k K, --key K     FloatHub Security Key (default
                     000102030405060708090A0B0C0D0E0F)
+
+
 ```
 
 The most import settings are the host and port for the source of the data and
@@ -158,9 +161,21 @@ the '-v' flag to get more output.
 
   * HDT - Heading (True)
 
+  * AIS - AIS Relaying (see below)
+
 ### FloatHub Functionality which is NOT supported
 
 The main capability that a real FloatHub device provides that is not easily
 replicable purely from NMEA data is voltage monitoring. This includes both
 reporting of battery and charger levels as well as monitoring activity of
 pumps. 
+
+### What About AIS Data?
+
+The script will relay AIS sentences to the FloatHub server if they are
+present in the NMEA stream (just like a regular FloatHub device does). On
+the FloatHub website it is possible to echo this data to AIS aggregation
+sites such as 
+[MarineTraffic.com](https://www.marinetraffic.com/)
+or 
+[AISHub.net](http://www.aishub.net)
