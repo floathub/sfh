@@ -20,9 +20,11 @@ for remote monitoring of wind, water, barometric pressure, etc.
 
 ### Python Requirements 
 
-The sfh script is written in python and expects python 3. It uses a number
-of standard libraries (socket, select, datetime, etc.) and also requires the
-following external libraries:
+The sfh script is written in python and expects python 2.7.  It will
+probably run under python 3, but re-connections to intermittent NMEA sources
+do not appear to be as reliable.  It uses a number of standard libraries
+(socket, select, datetime, etc.) and also requires the following external
+libraries:
 
   * pynmea2 (See [http://github.com/Knio/pynmea2](http://github.com/Knio/pynmea2))
 

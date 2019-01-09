@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 #
 #  Relatively simple process that consumes NMEA data from a socket/TCP
 #  connection, marks it up in the FloatHub format, and sends it to a
@@ -10,6 +10,7 @@
 #
 #
 
+from __future__ import print_function
 import socket
 import sys
 import select
@@ -18,13 +19,12 @@ import datetime
 import argparse
 import base64
 import os
-#import random
+import binascii
 
 try:
 
   import pynmea2
   
-
 except:
 
   print()
@@ -36,7 +36,6 @@ except:
   print("See http://github.com/Knio/pynmea2 for more information.")
   print()
   sys.exit()
-
 
 
 try:
@@ -100,14 +99,6 @@ if not set(options.fhubkey).issubset(allowed_chars):
   sys.exit()
   
   
-# TCP socket to the NMEA data source
-socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_address = (options.source, options.port)
-socket_to_nmea_connected = False
-socket_to_nmea.settimeout(20)
-#socket_to_nmea.setblocking(False)
-
-
 
 # Sentence types this code can do something with
 fh_sentence_types = [
@@ -365,7 +356,8 @@ def send_fh():
     fha_message = "$FHA:{}:2${}".format(options.fhubid,payload)
     byte_fha_message = bytearray(fha_message, 'ascii')    
     debugging_output("OUT: {}".format(fha_message))
-    binary_key = bytes.fromhex(options.fhubkey)
+    #binary_key = bytes.fromhex(options.fhubkey)
+    binary_key = binascii.unhexlify(options.fhubkey)
     iv = os.urandom(16)
     encryptor = AES.new(binary_key, AES.MODE_CBC, iv)
 
@@ -402,7 +394,25 @@ def send_fh():
     socket_to_fhub.close()
       
     
-    
+#
+# TCP socket to the NMEA data source
+#
+
+socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_address = (options.source, options.port)
+socket_to_nmea_connected = True
+socket_to_nmea.settimeout(10)
+
+try:
+  fancy_debugging_output("CONNECTING TO {}:{} (FD={})".format(options.source, options.port, socket_to_nmea.fileno()))
+  socket_to_nmea.connect( server_address )
+  socket_to_nmea_connected = True
+  fancy_debugging_output( "CONNECTED")
+
+except:
+  socket_to_nmea_connected = False
+  fancy_debugging_output( "FAILED TO CONNECT")
+
     
 
 #
@@ -412,81 +422,73 @@ def send_fh():
 last_message_sent_timestamp = datetime.datetime.utcnow()
 last_nmea_in_timestamp = datetime.datetime.utcnow()
 
+
 try:
+
   while True:
 
     if ( currently_active and  (datetime.datetime.utcnow() - last_message_sent_timestamp).total_seconds() > 30 ) or (datetime.datetime.utcnow() - last_message_sent_timestamp).total_seconds() > 60 * 10:    
       last_message_sent_timestamp = datetime.datetime.utcnow()
       send_fh()
-        
-    if socket_to_nmea_connected is True:
-      select.select([socket_to_nmea],[],[],5)
+
+    try:
+      incoming = socket_to_nmea.recv(1)
+      socket_to_nmea_connected = True
+    except:
+      socket_to_nmea_connected = False
       try:
-        incoming = socket_to_nmea.recv(1)
-        if len(incoming) == 0:
-          socket_to_nmea.shutdown(socket.SHUT_RDWR)
-          time.sleep(1)
-          socket_to_nmea.close()
-          time.sleep(1)
-          socket_to_nmea_connected = False
-          del socket_to_nmea 
-          socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          socket_to_nmea.settimeout(20)
-        else:
-          if incoming == b'\r':
-            pass
-          elif incoming == b'\n':
-            debugging_output(" In: {}".format(nmea_in_buffer))
-            handle_nmea_in(nmea_in_buffer)
-            nmea_in_buffer = ""
-            last_nmea_in_timestamp = datetime.datetime.utcnow()
-          else:
-            nmea_in_buffer += incoming.decode('ascii')
-            if len(nmea_in_buffer) > 1024 * 8:
-              nmea_in_buffer = ""
+        clientSocket.shutdown(socket.SHUT_RDWR)
       except:
-        fancy_debugging_output("DISCONNECTED THERE")
-        socket_to_nmea.shutdown(socket.SHUT_RDWR)
-        time.sleep(1)
-        socket_to_nmea.close()
-        time.sleep(1)
-        socket_to_nmea_connected = False
-        del socket_to_nmea 
-        socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket_to_nmea.settimeout(20)
-      #
-      #  Throwout and try to re-establish a connection if it is really slow
-      #
-
-      if socket_to_nmea_connected and (datetime.datetime.utcnow() - last_nmea_in_timestamp).total_seconds() > 20:
-        socket_to_nmea.shutdown(socket.SHUT_RDWR)
-        time.sleep(1)
-        socket_to_nmea.close()
-        time.sleep(1)
-        socket_to_nmea_connected = False
-        del socket_to_nmea 
-        socket_to_nmea = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket_to_nmea.settimeout(20)
-        fancy_debugging_output("RECYCLING")
-
-
+        pass
+      socket_to_nmea.close()
+      del socket_to_nmea
+      socket_to_nmea = socket.socket()
+      socket_to_nmea.settimeout(10)
+      while not socket_to_nmea_connected:
+        #attempt to reconnect, otherwise sleep for 5 seconds
+        try:
+          socket_to_nmea.__init__()
+          socket_to_nmea.settimeout(10)
+          fancy_debugging_output("CONNECTING TO {}:{} (FD={})".format(options.source, options.port, socket_to_nmea.fileno()))
+          socket_to_nmea.connect( server_address )
+          socket_to_nmea_connected = True
+          fancy_debugging_output( "(RE-)CONNECTED")
+          last_nmea_in_timestamp = datetime.datetime.utcnow()
+        except socket.error:
+          fancy_debugging_output( "FAILED TO CONNECT, SLEEPING 5")
+          time.sleep( 5 )
     else:
-      try:
-        fancy_debugging_output("CONNECTING {}:{} ".format(*server_address))
-        socket_to_nmea.__init__() 
-        #socket_to_nmea.setblocking(False)
-        socket_to_nmea.connect(server_address)
-        socket_to_nmea_connected = True
+      if incoming == b'\r':
+        pass
+      elif incoming == b'\n':
+        debugging_output(" In: {}".format(nmea_in_buffer))
+        handle_nmea_in(nmea_in_buffer)
+        nmea_in_buffer = ""
         last_nmea_in_timestamp = datetime.datetime.utcnow()
-        fancy_debugging_output("CONNECTED")
+      else:
+        nmea_in_buffer += incoming.decode('ascii')
+        if len(nmea_in_buffer) > 1024 * 8:
+          nmea_in_buffer = ""
+
+    #
+    #  Throwout and try to re-establish a connection if it is really slow
+    #
+
+    if socket_to_nmea_connected and (datetime.datetime.utcnow() - last_nmea_in_timestamp).total_seconds() > 20:
+      fancy_debugging_output("CONNECTION VERY SLOW, RECYCLING")
+      try:
+        socket_to_nmea.shutdown(socket.SHUT_RDWR)
       except:
-        fancy_debugging_output("FAILED TO CONNECT, WILL SLEEP A BIT")
-        time.sleep(10)
+        pass
+      socket_to_nmea.close()
+
 
 finally:
-    fancy_debugging_output("SHUTTING DOWN")
-    socket_to_nmea.shutdown(socket.SHUT_RDWR)
+    fancy_debugging_output("SHUTTING DOWN") 
+    try:
+      socket_to_nmea.shutdown(socket.SHUT_RDWR)
+    except:
+      pass
     socket_to_nmea.close()
     
-
 
