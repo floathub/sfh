@@ -85,19 +85,19 @@ options = parser.parse_args()
 #
 
 if len(options.fhubid) != 8:
-  print("ERROR: FloatHub ID is not exactly 8 characters long (cannot continue)")
+  print("ERR: FloatHub ID is not exactly 8 characters long (cannot continue)")
   sys.exit()
 allowed_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghojklmnopqrstuvwxyz0123456789')
 if not set(options.fhubid).issubset(allowed_chars):
-  print("ERROR: FloatHub ID has illegal characters (cannot continue)")
+  print("ERR: FloatHub ID has illegal characters (cannot continue)")
   sys.exit()
   
 if len(options.fhubkey) != 32:
-  print("ERROR: FloatHub Key is not exactly 16 bytes (hex) long (cannot continue)")
+  print("ERR: FloatHub Key is not exactly 16 bytes (hex) long (cannot continue)")
   sys.exit()
 allowed_chars = set('ABCDEFabcdef0123456789')
 if not set(options.fhubkey).issubset(allowed_chars):
-  print("ERROR: FloatHub Key has illegal characters (cannot continue)")
+  print("ERR: FloatHub Key has illegal characters (cannot continue)")
   sys.exit()
   
   
@@ -216,12 +216,12 @@ def relay_ais(message):
   try:
     socket_to_fhub.connect(fdr_address)
   except:
-    print("ERROR: Can't find any host to connect to at {}:{}".format(options.fhubs, options.fhubp))
+    print("ERR: Can't find any host to connect to at {}:{}".format(options.fhubs, options.fhubp))
     return
   try:
     how_many_went = socket_to_fhub.sendall(bytes(byte_fhs_message))
   except:
-    print("ERROR: Failed to send message to {}:{}".format(options.fhubs, options.fhubp))
+    print("ERR: Failed to send message to {}:{}".format(options.fhubs, options.fhubp))
     return
   socket_to_fhub.close()
   
@@ -437,12 +437,12 @@ def send_fh():
     try:
       socket_to_fhub.connect(fdr_address)
     except:
-      print("ERROR: Can't find any host to connect to at {}:{}".format(options.fhubs, options.fhubp))
+      print("ERR: Can't find any host to connect to at {}:{}".format(options.fhubs, options.fhubp))
       return
     try:
       how_many_went = socket_to_fhub.sendall(bytes(byte_fhs_message))
     except:
-      print("ERROR: Failed to send message to {}:{}".format(options.fhubs, options.fhubp))
+      print("ERR: Failed to send message to {}:{}".format(options.fhubs, options.fhubp))
       return
     socket_to_fhub.close()
       
