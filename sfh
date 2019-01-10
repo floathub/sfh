@@ -484,6 +484,7 @@ try:
       last_message_sent_timestamp = datetime.datetime.utcnow()
       send_fh()
 
+    select.select([socket_to_nmea], [],[], 5)
     try:
       incoming = socket_to_nmea.recv(1)
       socket_to_nmea_connected = True
