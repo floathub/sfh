@@ -57,7 +57,7 @@ guidance [here](https://docs.python.org/3/faq/windows.html).
 
 You'll also need a **FloatHub ID** and **Security Key**. These are free and
 require no payment or personal information other than an email address.
-These account credentails are required to identify which incoming data
+These account credentials are required to identify which incoming data
 belongs to which vessel, and also to help encrypt the data before it is
 sent. If you don't already have a FloatHub account, you can get one here:
 
