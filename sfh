@@ -231,6 +231,8 @@ def handle_nmea_in(nmea):
   global currently_active
   global gps_valid
 
+  if len(nmea) < 2:
+    return
   if nmea[0] == "!" and (nmea[1] == "A" or nmea[1] == "B" or nmea[1] =="S"):
     relay_ais(nmea)
     return
@@ -484,7 +486,10 @@ try:
       last_message_sent_timestamp = datetime.datetime.utcnow()
       send_fh()
 
-    select.select([socket_to_nmea], [],[], 5)
+    try:
+      select.select([socket_to_nmea], [],[], 5)
+    except:
+      pass
     try:
       incoming = socket_to_nmea.recv(1)
       socket_to_nmea_connected = True
