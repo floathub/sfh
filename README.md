@@ -132,6 +132,29 @@ periodically reconnect (to both the NMEA source and the FloatHub system).
 If you want to see more verbose information about what's going on, you can
 the '-v' flag to get more output.
 
+### Running at Boot
+
+Because the intention is to have the script running at all times in order to
+relay data, it is generally desirable to have it run at boot time. This can
+be accomplished in a  number of ways, but the easiest is probably with a
+reboot directive in your crontab. When logged into your Rasberry Pi (or
+similar), edit your crontab by typing
+
+```
+crontab -e
+```
+
+Assuming your sfh script is in the pi user's home directory, you want to add
+the line:
+
+```
+@reboot /usr/bin/python /home/pi/sfh -i foobar99 -k 42424242424242424242424242424242 &
+```
+
+When the crontab is saved, the sfh script should run whenever your Rasberry
+Pi is powered up. Of course you'll want to adjust the command line
+parameters you pass to sfh with your own relevant settings.
+ 
 
 ### NMEA Sentences Monitored
 
