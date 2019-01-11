@@ -132,10 +132,10 @@ periodically reconnect (to both the NMEA source and the FloatHub system).
 If you want to see more verbose information about what's going on, you can
 the '-v' flag to get more output.
 
-### Running at Boot
+### Running at Boot Time
 
 Because the intention is to have the script running at all times in order to
-relay data, it is generally desirable to have it run at boot time. This can
+regularly relay data, it is generally desirable to have it run at boot time. This can
 be accomplished in a  number of ways, but the easiest is probably with a
 reboot directive in your crontab. When logged into your Rasberry Pi (or
 similar), edit your crontab by typing
