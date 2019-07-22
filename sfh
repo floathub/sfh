@@ -135,7 +135,7 @@ class FloatHubData:
       return(",{}:{}".format(self.label, self.value))
     return ""
 
-  def recent(self)
+  def recent(self):
     if (datetime.datetime.utcnow() - self.last_updated).total_seconds() < 60:
       return True
     return False
