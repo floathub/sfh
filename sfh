@@ -488,7 +488,7 @@ try:
 
     try:
       select.select([socket_to_nmea], [],[], 5)
-    except:
+    except Exception as ex:
       pass
     try:
       incoming = socket_to_nmea.recv(1)
