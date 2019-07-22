@@ -135,13 +135,19 @@ class FloatHubData:
       return(",{}:{}".format(self.label, self.value))
     return ""
 
+  def recent(self)
+    if (datetime.datetime.utcnow() - self.last_updated).total_seconds() < 60:
+      return True
+    return False
+    
+
 #
-# Make some FlaotHub data holders
+# Make some FloatHub data holders
 #
 fh_u = FloatHubData("U", "Timestamp")
 fh_t = FloatHubData("T", "Temperature (Air)")
 fh_p = FloatHubData("P", "Pressure")
-fh_l = FloatHubData("L", "Latitutde")
+fh_l = FloatHubData("L", "Latitude")
 fh_o = FloatHubData("O", "Longitude")
 fh_a = FloatHubData("A", "Altitude")
 fh_h = FloatHubData("H", "HDOP")
@@ -483,7 +489,7 @@ try:
 
   while True:
 
-    if not sent_first and gps_valid:
+    if not sent_first and gps_valid and fh_l.recent() and fh_o.recent():
       sent_first = True
       send_fh()
 
