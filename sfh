@@ -111,6 +111,7 @@ fh_sentence_types = [
 # Flags to know if we are in motion, GPS is valid
 currently_active = False
 gps_valid = False
+sent_first = False
 
 #
 # A class for FloathHub protocol objects
@@ -481,6 +482,10 @@ last_nmea_in_timestamp = datetime.datetime.utcnow()
 try:
 
   while True:
+
+    if not sent_first and gps_valid:
+      sent_first = True
+      send_fh()
 
     if ( currently_active and  (datetime.datetime.utcnow() - last_message_sent_timestamp).total_seconds() > 30 ) or (datetime.datetime.utcnow() - last_message_sent_timestamp).total_seconds() > 60 * 10:    
       last_message_sent_timestamp = datetime.datetime.utcnow()
