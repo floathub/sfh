@@ -329,18 +329,19 @@ def handle_nmea_in(nmea):
 
 
   elif parsed_nmea.sentence_type == "MWV":
-    if parsed_nmea.wind_angle:
-      fh_k.set(parsed_nmea.wind_angle)
-    if parsed_nmea.wind_speed:
-      wind_speed = float(parsed_nmea.wind_speed)
-      # convert anything not in knots to knots
-      if  parsed_nmea.wind_speed_units == "K":
-        wind_speed = wind_speed * 0.539957
-      elif parsed_nmea.wind_speed_units == "M":
-        wind_speed = wind_speed * 1.94384
-      elif parsed_nmea.wind_speed_units == "S":
-        wind_speed = wind_speed * 0.868976
-      fh_j.set(wind_speed)
+    if parsed_nmea.reference == "R" and parsed_nmea.status == "A":  # <-- Relative to Boat and Valid
+      if parsed_nmea.wind_angle:
+        fh_k.set(parsed_nmea.wind_angle)
+      if parsed_nmea.wind_speed:
+        wind_speed = float(parsed_nmea.wind_speed)
+        # convert anything not in knots to knots
+        if  parsed_nmea.wind_speed_units == "K":
+          wind_speed = wind_speed * 0.539957
+        elif parsed_nmea.wind_speed_units == "M":
+          wind_speed = wind_speed * 1.94384
+        elif parsed_nmea.wind_speed_units == "S":
+          wind_speed = wind_speed * 0.868976
+        fh_j.set(wind_speed)
 
   elif parsed_nmea.sentence_type == "MWD":
     if parsed_nmea.direction_true:
