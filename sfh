@@ -87,7 +87,7 @@ options = parser.parse_args()
 if len(options.fhubid) != 8:
   print("ERR: FloatHub ID is not exactly 8 characters long (cannot continue)")
   sys.exit()
-allowed_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghojklmnopqrstuvwxyz0123456789')
+allowed_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
 if not set(options.fhubid).issubset(allowed_chars):
   print("ERR: FloatHub ID has illegal characters (cannot continue)")
   sys.exit()
